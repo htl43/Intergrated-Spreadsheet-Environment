@@ -26,6 +26,10 @@ impl Coordinate {
     pub fn child_of(parent: &Self, child_coord: (NonZeroU32, NonZeroU32)) -> Coordinate {
         let mut new_row_col = parent.clone().row_cols;
         new_row_col.push(child_coord);
+<<<<<<< HEAD
+=======
+        // info!("pareb = {:?}, child_coord = {:?}", parent, child_coord);
+>>>>>>> hieule/fix_bug
 
         Coordinate {
             row_cols: new_row_col,
@@ -144,7 +148,7 @@ impl Coordinate {
     // Optinoally returns: Some(N) if true (including N=0 if sibling),
     // or None if false
     // Korede Check this
-    fn is_n_parent(&self, other: &Self) -> Option<i32> {
+    pub fn is_n_parent(&self, other: &Self) -> Option<i32> {
         if self.row_cols.len() > other.row_cols.len() {
             return None;
         }

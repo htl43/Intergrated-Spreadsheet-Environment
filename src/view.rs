@@ -25,6 +25,8 @@ use crate::{coord};
 #[grammar = "coordinate.pest"]
 pub struct CoordinateParser;
 
+static mut check: bool = true;
+
 pub fn view_side_nav(m: &Model) -> Html {
     let mut side_menu_nodes = VList::new();
     let mut side_menu_section = html! { <></> };
@@ -192,6 +194,7 @@ pub fn view_side_menu(m: &Model, side_menu: &SideMenu) -> Html {
 
 pub fn view_menu_bar(m: &Model) -> Html {
     let active_cell = m.active_cell.clone();
+    let nest_active_cell = m.active_cell.clone();
     let (default_row, default_col) = {
         let (r, c) = m.default_nested_row_cols.clone();
         (r.get(), c.get())
@@ -199,6 +202,7 @@ pub fn view_menu_bar(m: &Model) -> Html {
     // SPECIAL MENU BAR ITEMS
     let nest_grid_button = html! {
         /* the "Nest Grid" button is special because
+<<<<<<< HEAD
             * it contains fields for the variable size of the button
             */
         <button class="menu-bar-button" id="nest" onclick=m.link.callback(move |_| {
@@ -206,8 +210,28 @@ pub fn view_menu_bar(m: &Model) -> Html {
                 Action::AddNestedGrid(current.clone(), (default_row, default_col))
             } else { Action::Noop }
         })>
+=======
+         * it contains fields for the variable size of the button
+         */
+        <button class="menu-bar-button" id="nest" 
+            onmousedown=m.link.callback(move |e : MouseDownEvent| {
+                if let Some(current) = &active_cell {
+                    Action::AddNestedGrid(current.clone(), (default_row, default_col))            
+                } else { Action::Noop }
+            })
+            onmouseup=m.link.callback(move |e : MouseUpEvent| {
+                if let Some(current) = &nest_active_cell.clone() {
+                    Action::SetActiveCell(current.clone())            
+                } else { Action::Noop }
+            })     
+        >
+>>>>>>> hieule/fix_bug
             { "Nest Grid  " }
-            <input
+        </button>
+    };
+
+    let nest_row_input = html! {
+        <input
                 class="active-cell-indicator"
                 placeholder="Row"
                 size="3"
@@ -221,24 +245,26 @@ pub fn view_menu_bar(m: &Model) -> Html {
                 onclick=m.link.callback(|e: ClickEvent| { e.prevent_default(); Action::Noop })
                 value={default_row}>
             </input>
-            <input
-                class="active-cell-indicator"
-                placeholder="Col"
-                size="3"
-                onchange=m.link.callback(move |e: ChangeData| {
-                    if let ChangeData::Value(value) = e {
-                        if let Ok (col) = value.parse::<i32>() {
-                            return Action::ChangeDefaultNestedGrid(
-                                non_zero_u32_tuple((default_row, (col as u32)))
-                            );
-                        }
+    };
+
+    let nest_col_input = html! {
+        <input
+            class="active-cell-indicator"
+            placeholder="Col"
+            size="3"
+            onchange=m.link.callback(move |e: ChangeData| {
+                if let ChangeData::Value(value) = e {
+                    if let Ok (col) = value.parse::<i32>() {
+                        return Action::ChangeDefaultNestedGrid(
+                            non_zero_u32_tuple((default_row, (col as u32)))
+                        );
                     }
-                    Action::Noop
-                })
-                onclick=m.link.callback(|e: ClickEvent| { e.prevent_default(); Action::Noop })
-                value={default_col}>
-            </input>
-        </button>
+                }
+                Action::Noop
+            })
+            onclick=m.link.callback(|e: ClickEvent| { e.prevent_default(); Action::Noop })
+            value={default_col}>
+        </input>
     };
 
     let add_definition_button = {
@@ -375,6 +401,7 @@ pub fn view_menu_bar(m: &Model) -> Html {
             //<>
                 { nest_grid_button }
             //</>
+                { nest_row_input } { nest_col_input }
             <button id="InsertRow" class="menu-bar-button" onclick=m.link.callback(|_| Action::InsertRow)>
                 { "Insert Row" }
             </button>
@@ -643,8 +670,13 @@ pub fn view_lookup_grammar(
             <div contenteditable=true
                 class=format!{
                         "cell-data {}",
+<<<<<<< HEAD
                         if is_active { "cell-active" } else { "cell-inactive" },
                         }
+=======
+                        if is_active { "cell-active " } else { "cell-inactive" },
+                      }
+>>>>>>> hieule/fix_bug
                 placeholder="coordinate"
                 ref={
                     if is_active {
@@ -678,6 +710,7 @@ pub fn view_input_grammar(
             return html! { <> </> };
         }
     }
+
     // load the suggestion values, including the completion callbacks
     // and parse them into DOM nodes
     let suggestions_len = if value.clone() != "" && is_active {
@@ -739,9 +772,10 @@ pub fn view_input_grammar(
         format! {"cell suggestion row-{} col-{}", coord.row_to_string(), coord.col_to_string()};
     let cell_data_classes = format! {
         "cell-data {} {}",
-        if is_active { "cell-active" } else { "cell-inactive" },
+        if is_active { "cell-active " } else { "cell-inactive" },
         if is_selected { "selection" } else { "" }
     };
+
     // relevant coordinates for navigation purposes
     let neighbor_left = current_coord
         .neighbor_left()
@@ -789,7 +823,7 @@ pub fn view_input_grammar(
     let last_col_prev_row = /* TODO: get the correct value of this */ current_coord.neighbor_above();
 
     let keydownhandler = m.link.callback(move |e: KeyDownEvent| {
-        info! {"suggestion len {}", suggestions_len}
+        // info! {"suggestion len {}", suggestions_len}
         if e.code() == "Tab" {
             e.prevent_default();
             if suggestions_len > 0 {
@@ -806,7 +840,7 @@ pub fn view_input_grammar(
                     .or(first_col_next_row.clone())
                     .or(tab_coord.parent().and_then(|c| c.neighbor_right()))
             };
-            info! {"next_active_cell {}", next_active_cell.clone().unwrap().to_string()};
+            // info! {"next_active_cell {}", next_active_cell.clone().unwrap().to_string()};
             return next_active_cell.map_or(Action::Noop, |c| Action::SetActiveCell(c));
         } 
         if is_selected && (e.code() == "Backspace" || e.code() == "Delete") {       
@@ -814,18 +848,29 @@ pub fn view_input_grammar(
         }
         Action::Noop
     });
+<<<<<<< HEAD
     let drophandler = m.link.callback(move |e: DragDropEvent| {
         let file = e.data_transfer().unwrap().files().iter().next().unwrap();
         // info!{"this is csv {:?}", file}
         Action::ReadCSVFile(file, is_hovered_on.clone())
     });
+=======
+
+>>>>>>> hieule/fix_bug
     html! {
         <div
             onclick=m.link.callback(|_| Action::HideContextMenu)
             class=cell_classes
             id=format!{"cell-{}", coord.to_string()}
+<<<<<<< HEAD
             style={ get_style(m.get_session().grammars.get(&coord).expect("no grammar with this coordinate"), &m.col_widths, &m.row_heights,  &coord) }>
+=======
+            // style={ get_style(&m, &coord) }>
+            style={ get_style(m.get_session().grammars.get(&coord).expect("no grammar with this coordinate"), &m.col_widths, &m.row_heights,  &coord) }
+            >
+>>>>>>> hieule/fix_bug
             <div contenteditable=true
+
                 class=cell_data_classes
                 onkeydown=keydownhandler
                 onkeypress=m.link.callback(move |e : KeyPressEvent| {
@@ -879,16 +924,21 @@ pub fn view_input_grammar(
                         let rect = target.get_bounding_client_rect();
                         (rect.get_width() - e.offset_x(), rect.get_height() - e.offset_y())
                     };
-                    info!{"offset: {} {}", offset_x, offset_y};
+                    // info!{"offset: {} {}", offset_x, offset_y};
                     let draggable_area = 4.0;
                     if offset_x < draggable_area  || offset_y < draggable_area {
                         Action::Resize(ResizeMsg::Start(drag_coord.clone()))
                     } else {
                         Action::Noop
                     }
+<<<<<<< HEAD
                 })
                 ondrop=drophandler >
                 { value }
+=======
+                })>
+                // { value }
+>>>>>>> hieule/fix_bug
             </div>
             { suggestions }
         </div>
@@ -1103,3 +1153,4 @@ fn random_color() -> String {
     .try_into()
     .unwrap()
 }
+

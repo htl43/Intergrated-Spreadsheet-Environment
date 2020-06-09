@@ -42,6 +42,7 @@ pub struct Model {
 
     // - `active_cell`
     pub active_cell: Option<Coordinate>,
+    pub focus_cell: Option<Coordinate>,
 
     // - `first_select_cell` is the top-leftmost cell in a selection
     // - `last_select_cell` is the bottom-rightmost cell in a selection
@@ -361,6 +362,7 @@ impl Model {
             // let mut cols = 0;
 
             for child_ in sub_coords {
+<<<<<<< HEAD
                 let old_coord = Coordinate::child_of(&coord, *child_);
                 let new_coord = Coordinate::child_of(&new_parent, *child_);
                 grammar_copy.insert(
@@ -371,6 +373,14 @@ impl Model {
                         .unwrap()
                         .clone(),
                 );
+=======
+                
+                let old_coord = Coordinate::child_of(&Coord, *child_);
+                // info!("Old {:?}", old_coord);
+                let new_coord = Coordinate::child_of(&new_parent, *child_);
+                // info!("New {:?}", new_coord);
+                grammar_copy.insert(new_coord.clone(), grammar_copy.get(&old_coord.clone()).clone().unwrap().clone());
+>>>>>>> hieule/fix_bug
                 grammar_copy.remove(&old_coord);
 
                 // if child_.0.get() > rows{
@@ -424,6 +434,7 @@ impl Component for Model {
             col_widths: hashmap! {
                coord_col!("root","A") => 90.0,
                coord_col!("root","B") => 90.0,
+               coord_col!("root","C") => 90.0,
                coord_col!("meta","A") => 180.0,
                coord_col!("meta-A3","A") => 90.0,
                coord_col!("meta-A3","B") => 180.0,
@@ -444,6 +455,7 @@ impl Component for Model {
             console: ConsoleService::new(),
             reader: ReaderService::new(),
 
+            focus_cell: None,
             first_select_cell: None,
             last_select_cell: None,
 
@@ -599,6 +611,7 @@ impl Component for Model {
             }
 
             Action::ChangeInput(coord, new_value) => {
+                set_data_cell(&coord.clone(), new_value.clone().to_string());
                 if let Some(g) = self.get_session_mut().grammars.get_mut(&coord) {
                     match g {
                         Grammar {
@@ -616,11 +629,13 @@ impl Component for Model {
                         _ => (),
                     }
                 }
+                
                 false
             }
 
             Action::SetActiveCell(coord) => {
                 self.active_cell = Some(coord.clone());
+                self.focus_cell = Some(coord.clone());
                 focus_on_cell(&coord);
                 true
             }
@@ -798,6 +813,7 @@ impl Component for Model {
                 let depth_check = self.last_select_cell.clone().unwrap().row_cols.len();
 
                 let mut ref_grammars = self.get_session_mut().grammars.clone();
+<<<<<<< HEAD
                 for (coord, grammar) in ref_grammars.clone().iter_mut() {
                     if row_range.contains(&coord.row().get())
                         && col_range.contains(&coord.col().get())
@@ -808,6 +824,17 @@ impl Component for Model {
                             Kind::Input(value) => {
                                 grammar.kind = Kind::Input("".to_string());
                                 self.get_session_mut()
+=======
+                for (coord, grammar) in ref_grammars.clone().iter_mut() {              
+                        if row_range.contains(&coord.row().get()) && col_range.contains(&coord.col().get()) && coord.parent() == parent_check                    
+                        {                                                       
+                            let get_kind = grammar.kind.clone();
+                            match get_kind {
+                                Kind::Input(value) => {
+                                    grammar.kind =  Kind::Input("".to_string());
+                                    set_data_cell(&coord, "".to_string());                                 
+                                    self.get_session_mut()
+>>>>>>> hieule/fix_bug
                                     .grammars
                                     .insert(coord.clone(), grammar.clone());
                             }
@@ -819,6 +846,11 @@ impl Component for Model {
                                         self.get_session_mut()
                                             .grammars
                                             .insert(c.clone(), g.clone());
+<<<<<<< HEAD
+=======
+                                            set_data_cell(&c, "".to_string());
+                                        }
+>>>>>>> hieule/fix_bug
                                     }
                                 }
                             }
@@ -952,66 +984,7 @@ impl Component for Model {
                 true
             }
 
-            Action::MergeCells() => {
-                if self.min_select_cell.is_none() || self.max_select_cell.is_none() {
-                    return false;
-                }
-                let mut min_select_row = self.min_select_cell.as_ref().unwrap().row();
-                let mut max_select_row = self.max_select_cell.as_ref().unwrap().row();
-                let mut min_select_col = self.min_select_cell.as_ref().unwrap().col();
-                let mut max_select_col = self.max_select_cell.as_ref().unwrap().col();
-                let mut merge_height = 0.00;
-                let mut merge_width = 0.00;
-                let mut max_coord = Coordinate::default();
-                let mut max_grammar = Grammar::default();
-                let mut ref_grammas = self.get_session().grammars.clone();
-                for (coord, grammar) in ref_grammas.iter_mut() {
-                    if min_select_row <= coord.row()
-                        && coord.row() <= max_select_row
-                        && min_select_col <= coord.col()
-                        && coord.col() <= max_select_col
-                        && coord.to_string().contains("root-")
-                        && grammar.style.display == true
-                    {
-                        let coord_style = grammar.style.clone();
-                        if (coord.row() == max_select_row) && (coord.col() == max_select_col) {
-                            merge_width = merge_width + coord_style.width;
-                            merge_height = merge_height + coord_style.height;
-                            max_coord = coord.clone();
-                            max_grammar = grammar.clone();
-                            continue;
-                        } else if (coord.row() == max_select_row) {
-                            merge_width = merge_width + coord_style.width;
-                        } else if coord.col() == max_select_col {
-                            merge_height = merge_height + coord_style.height;
-                        }
-                        if (coord.row() != max_select_row) || (coord.col() != max_select_col) {
-                            grammar.style.display = false;
-                            merge_height = merge_height;
-                            merge_width = merge_width;
-                        }
-                        grammar.style.col_span.0 = min_select_col.get();
-                        grammar.style.col_span.1 = max_select_col.get();
-                        grammar.style.row_span.0 = min_select_row.get();
-                        grammar.style.row_span.1 = max_select_row.get();
-                        self.get_session_mut()
-                            .grammars
-                            .insert(coord.clone(), grammar.clone());
-                    }
-                }
-                max_grammar.style.width = merge_width;
-                max_grammar.style.height = merge_height;
-                max_grammar.style.col_span.0 = min_select_col.get();
-                max_grammar.style.col_span.1 = max_select_col.get();
-                max_grammar.style.row_span.0 = min_select_row.get();
-                max_grammar.style.row_span.1 = max_select_row.get();
-                self.get_session_mut()
-                    .grammars
-                    .insert(max_coord, max_grammar);
-                self.min_select_cell = None;
-                self.max_select_cell = None;
-                true
-            }
+           
 
             Action::ReadDriverFiles(files_list) => {
                 // Get the main file and miscellaneous/additional files from the drivers list
@@ -1110,19 +1083,24 @@ impl Component for Model {
             }
 
             Action::AddNestedGrid(coord, (rows, cols)) => {
-                if self.active_cell.is_none() {
-                    info!("Expect a cell is active");
+                if self.active_cell.is_none() || self.focus_cell.is_none() {
+                    info!("Expect a cell is select");
                     return false;
                 }
+
+                
+                let mut change_active = false;
                 // height and width initial value
                 let mut tmp_heigth = 30.0;
                 let mut tmp_width = 90.0;
 
                 let current_cell = self.active_cell.clone();
+                set_data_cell(&current_cell.clone().unwrap(), "".to_string());
                 let ref_grammas = self.get_session().grammars.clone();
                 let current_grammar = ref_grammas.get(&current_cell.clone().unwrap()).unwrap();
 
                 let (r, c) = non_zero_u32_tuple((rows, cols));
+                // info!("rorws {:?}, cols {:?}", rows.clone(), cols.clone());
                 let mut grammar = Grammar::as_grid(r, c);
                 if let Kind::Grid(sub_coords) = grammar.clone().kind {
                     // set active cell to first cell inside the new nested grammar
@@ -1130,22 +1108,24 @@ impl Component for Model {
 
                     let current_width = current_grammar.style.width;
                     let current_height = current_grammar.style.height;
+                    
 
                     // check if active cell row height and width is greater than default value
                     if current_width > tmp_width {
                         // set height argument to active cell height if greater
                         // TODO: use the actual number of columns instead of hard coded "3" .
-                        tmp_width = current_width / 3.0;
+                        tmp_width = current_width / (cols as f64);
+                        
                     }
                     if current_height > tmp_heigth {
                         // set width argument to active cell width if greater
                         // TODO: use the actual number of rows instead of hard coded "3" .
-                        tmp_heigth = current_height / 3.0;
+                        tmp_heigth = current_height / (rows as f64);
                     }
 
                     for sub_coord in sub_coords {
                         let new_coord = Coordinate::child_of(&coord, sub_coord);
-
+                        
                         self.get_session_mut()
                             .grammars
                             .insert(new_coord.clone(), Grammar::default());
@@ -1165,12 +1145,16 @@ impl Component for Model {
                             }
                         }
                     }
+<<<<<<< HEAD
+=======
+
+>>>>>>> hieule/fix_bug
                 }
                 if current_grammar.style.row_span.0 != 0 || current_grammar.style.col_span.0 != 0 {
                     grammar.style.row_span = current_grammar.style.row_span.clone();
                     grammar.style.col_span = current_grammar.style.col_span.clone();
                 }
-                info!("grammar {:?}", grammar);
+              
                 self.get_session_mut()
                     .grammars
                     .insert(coord.clone(), grammar.clone());
@@ -1180,7 +1164,11 @@ impl Component for Model {
                     (rows as f64) * (/* default row height */tmp_heigth),
                     (cols as f64) * (/* default col width */tmp_width),
                 );
+<<<<<<< HEAD
 
+=======
+                
+>>>>>>> hieule/fix_bug
                 true
             }
 
@@ -1289,33 +1277,8 @@ impl Component for Model {
                 }
                 true
             }
-            Action::DeleteRow => {
-                //Taking Active cell
-                if let Some(coord) = self.active_cell.clone() {
-                    //Have to initialize many things for them to work in loop
-                    let mut next_row = coord.clone();
-                    let mut grammars = self.get_session_mut().grammars.clone();
-                    let mut cur_row_coord = self.query_row(next_row.full_row());
-                    let _parent = coord.parent().unwrap();
 
-                    let mut temp: Vec<Grammar> = vec![];
-                    let mut u = 0;
-                    let mut next_row_coord = self.query_row(next_row.full_row());
-                    let mut new_row_coords: std::vec::Vec<(
-                        std::num::NonZeroU32,
-                        std::num::NonZeroU32,
-                    )> = vec![];
-
-                    //Changing each rowfrom the one being deleted
-                    while let Some(below_coord) = next_row.neighbor_below() {
-                        temp.clear();
-                        next_row_coord = self.query_row(below_coord.full_row());
-                        if next_row_coord.len() != 0 {
-                            temp = std::vec::from_elem(
-                                grammars[&next_row_coord[0]].clone(),
-                                next_row_coord.len(),
-                            );
-
+<<<<<<< HEAD
                             // each grammar copied
                             for i in next_row_coord.clone() {
                                 u = i.col().get() as usize;
@@ -1352,32 +1315,57 @@ impl Component for Model {
                                                 (c.row(), c.col()),
                                             ));
                                         }
+=======
+            Action::DeleteRow => {            
+                if let Some(focus_coord) = self.focus_cell.clone() {
+
+                    let focus_coord_parent = focus_coord.parent();
+                    let current_hashmap = self.get_session().grammars.clone();
+                    let focus_depth = focus_coord.row_cols.len();
+
+                    for coord in current_hashmap.keys() {
+                        if coord.parent() == focus_coord_parent {
+                            if coord.row().get() == focus_coord.row().get() {
+                                for sub_coord in current_hashmap.clone().keys() {
+                                    if sub_coord.row_cols.starts_with(&coord.row_cols.clone()) {
+                                        self.get_session_mut().grammars.remove(&sub_coord);
+>>>>>>> hieule/fix_bug
                                     }
                                 }
-                                grammars.remove(&parent);
-                                grammars.remove(&next_row);
-                                for i in next_row_coord.clone() {
-                                    grammars.remove(&i);
-                                }
-                                grammars.insert(
-                                    parent,
-                                    Grammar {
-                                        kind: Kind::Grid(new_row_coords.clone()),
-                                        name: name.clone(),
-                                        style: style.clone(),
-                                    },
-                                );
-                                break;
                             }
+<<<<<<< HEAD
+=======
                         }
-
-                        cur_row_coord = next_row_coord.clone();
-                        next_row = below_coord;
                     }
-                    self.get_session_mut().grammars = grammars;
+
+                    let mut temp_grammas: HashMap<Coordinate, Grammar> = HashMap::new();
+
+                    for coord in current_hashmap.keys() {
+                        if coord.row().get() > focus_coord.row().get() && coord.parent() == focus_coord_parent  { 
+                            for (sub_coord, sub_grammar) in current_hashmap.iter() {
+                                if sub_coord.row_cols.starts_with(&coord.row_cols.clone()) {
+                                    let sub_coord_depth = sub_coord.row_cols.len();
+                                    let mut new_coord = sub_coord.clone();
+                                    let c_row = new_coord.row_cols[focus_depth - 1].0;
+                                    new_coord.row_cols[focus_depth - 1].0 = NonZeroU32::new(c_row.get() - 1).unwrap();
+                                    self.get_session_mut().grammars.remove(&sub_coord);
+                                    temp_grammas.insert(new_coord.clone(), sub_grammar.clone());                                                                                 
+                                }
+                               
+                            }
+>>>>>>> hieule/fix_bug
+                        }
+                    }
+
+                    for (c, g) in temp_grammas.iter() {
+                        self.get_session_mut().grammars.insert(c.clone(), g.clone());
+                    }
+                               
                 }
+                self.focus_cell = None;
                 true
             }
+<<<<<<< HEAD
             Action::DeleteCol => {
                 //Taking Active cell
                 if let Some(coord) = self.active_cell.clone() {
@@ -1448,30 +1436,51 @@ impl Component for Model {
                                                 (c.row(), c.col()),
                                             ));
                                         }
+=======
+
+            Action::DeleteCol => {
+                if let Some(focus_coord) = self.focus_cell.clone() {
+                    
+                    let focus_coord_parent = focus_coord.parent();
+                    let current_hashmap = self.get_session().grammars.clone();
+                    let focus_depth = focus_coord.row_cols.len();
+
+                    for coord in current_hashmap.keys() {
+                        if coord.parent() == focus_coord_parent {
+                            if coord.col().get() == focus_coord.col().get() {
+                                for sub_coord in current_hashmap.clone().keys() {
+                                    if sub_coord.row_cols.starts_with(&coord.row_cols.clone()) {
+                                        self.get_session_mut().grammars.remove(&sub_coord);
+>>>>>>> hieule/fix_bug
                                     }
                                 }
-                                grammars.remove(&parent);
-                                grammars.remove(&next_col);
-                                for c in next_col_coord.clone() {
-                                    grammars.remove(&c);
-                                }
-                                grammars.insert(
-                                    parent,
-                                    Grammar {
-                                        kind: Kind::Grid(new_col_coords.clone()),
-                                        name: name.clone(),
-                                        style: style.clone(),
-                                    },
-                                );
-                                break;
                             }
                         }
-
-                        cur_col_coord = next_col_coord.clone();
-                        next_col = right_coord;
                     }
-                    self.get_session_mut().grammars = grammars;
+
+                    let mut temp_grammas: HashMap<Coordinate, Grammar> = HashMap::new();
+
+                    for coord in current_hashmap.keys() {
+                        if coord.col().get() > focus_coord.col().get() && coord.parent() == focus_coord_parent  { 
+                            for (sub_coord, sub_grammar) in current_hashmap.iter() {
+                                if sub_coord.row_cols.starts_with(&coord.row_cols.clone()) {
+                                    let mut new_coord = sub_coord.clone();
+                                    let c_col = new_coord.row_cols[focus_depth - 1].1;
+                                    new_coord.row_cols[focus_depth - 1].1 = NonZeroU32::new(c_col.get() - 1).unwrap();
+                                    self.get_session_mut().grammars.remove(&sub_coord);
+                                    temp_grammas.insert(new_coord.clone(), sub_grammar.clone());                                                                                 
+                                }
+                               
+                            }
+                        }
+                    }
+
+                    for (c, g) in temp_grammas.iter() {
+                        self.get_session_mut().grammars.insert(c.clone(), g.clone());
+                    }
+                                       
                 }
+                self.focus_cell = None;  
                 true
             }
 
@@ -1912,13 +1921,32 @@ where
 }
 
 fn focus_on_cell(c: &Coordinate) {
-    let cell_id = format! {"cell-{}", c.to_string()};
+    let cell_id = format! {"cell-{}", c.to_string()};   
     js! {
         try {
             let element = document.getElementById(@{cell_id.clone()});
             element.firstChild.focus();
         } catch (e) {
             console.log("cannot focus cell with coordinate ", @{cell_id.to_string()});
+        }
+    };
+}
+
+fn set_data_cell(c: &Coordinate, value: String) {
+    let cell_id = format! {"cell-{}", c.clone().to_string()}; 
+    js! {
+        try {
+            let js_value = @{value.clone()};
+            let element = document.getElementById(@{cell_id.clone()}).firstChild;           
+            if (js_value != "") {
+                element.value = "";
+                element.focus();
+            } else {
+                element.innerHTML = "";
+            }
+            // console.log( @{cell_id.to_string()});
+        } catch (e) {
+            console.log("cannot clear data on coordinate ", @{cell_id.to_string()});
         }
     };
 }
